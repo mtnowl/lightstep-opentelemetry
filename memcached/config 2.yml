@@ -1,0 +1,21 @@
+receivers:
+  memcached:
+    endpoint: 'localhost:11211'
+    collection_interval: 10s
+
+processors:
+  batch:
+
+exporters:
+  logging:
+    verbosity: detailed
+  otlp/lightstep:
+    endpoint: ingest.lightstep.com:443
+    headers: { 'lightstep-access-token': 'INSERT YOUR TOKEN HERE' }
+
+service:
+  pipelines:
+    metrics:
+      receivers: [memcached]
+      processors: [batch]
+      exporters: [otlp/lightstep]
