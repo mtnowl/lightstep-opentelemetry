@@ -1,0 +1,29 @@
+receivers:
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'cockroachdb'
+          scrape_interval: 5s
+          metrics_path: '/_status/vars'
+          scheme: 'http'
+          tls_config:
+            insecure_skip_verify: true
+          static_configs:
+            - targets: ['localhost:8080']
+
+processors:
+  batch:
+
+exporters:
+  logging:
+    verbosity: detailed
+  otlp/lightstep:
+    endpoint: ingest.lightstep.com:443
+    headers: { 'lightstep-access-token': 'INSERT YOUR TOKEN HERE' }
+
+service:
+  pipelines:
+    metrics:
+      receivers: [prometheus]
+      processors: [batch]
+      exporters: [otlp/lightstep]
