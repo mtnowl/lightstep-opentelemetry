@@ -1,0 +1,16 @@
+receivers:
+  influxdb:
+
+processors:
+  batch:
+
+exporters:
+  logging:
+    verbosity: detailed
+
+service:
+  pipelines:
+    metrics:
+      receivers: [influxdb]
+      processors: [batch]
+      exporters: [logging]
