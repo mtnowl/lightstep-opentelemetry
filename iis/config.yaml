@@ -1,0 +1,23 @@
+receivers:
+  iis:
+    collection_interval: 10s
+
+processors:
+  batch:
+
+exporters:
+  logging:
+    verbosity: detailed
+  otlp/lightstep:
+    endpoint: ingest.lightstep.com:443
+    headers:
+      {
+        'lightstep-access-token': 'LSKiySqJWrqZoxLh6vkIO/EiXCObybcpaZ8WL8wdE0896jXCconTG11zl3oAUm62SycLYHWrcqjhxSlgx+lDuBm2ARRI8DSYL/6g0Ov9',
+      }
+
+service:
+  pipelines:
+    metrics:
+      receivers: [iis]
+      processors: [batch]
+      exporters: [otlp/lightstep]
