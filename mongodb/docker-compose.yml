@@ -1,0 +1,21 @@
+version: '3.7'
+services:
+  mongo:
+    container_name: mongo
+    build: .
+    ports:
+      - 27017:27017
+    stop_grace_period: 1s
+    networks:
+      - integrations
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib
+    environment:
+      LS_ACCESS_TOKEN: ${LS_ACCESS_TOKEN}
+    volumes:
+      - ./collector.yml:/etc/otelcol-contrib/config.yaml
+    networks:
+      - integrations
+
+networks:
+  integrations:

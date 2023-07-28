@@ -1,0 +1,30 @@
+receivers:
+  mongodb:
+    hosts:
+      - endpoint: mongo:27017
+    username: otel
+    password: otel
+    collection_interval: 60s
+    initial_delay: 1s
+    tls:
+      insecure: true
+      insecure_skip_verify: true
+
+exporters:
+  logging:
+    loglevel: debug
+  # configuring otlp to Lightstep
+  otlp:
+    endpoint: ingest.lightstep.com:443
+    headers:
+      'lightstep-access-token': '${LS_ACCESS_TOKEN}'
+
+processors:
+  batch:
+
+service:
+  pipelines:
+    metrics:
+      receivers: [mongodb]
+      processors: [batch]
+      exporters: [logging, otlp]
