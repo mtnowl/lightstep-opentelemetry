@@ -1,0 +1,152 @@
+version: '3.6'
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
+    ports:
+      - '2181:2181'
+
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    ports:
+      - '9092:9092'
+      - '9989'
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_PORT: 9092
+      JMX_PORT: 9989
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  kafka-cat:
+    image: confluentinc/cp-kafkacat
+    container_name: kafka-cat
+    command: ['/bin/sh', '-c', 'trap : TERM INT; sleep infinity & wait']
+
+  # consumer:
+  #   depends_on:
+  #     - kafka
+  #   build: consumer
+  #   image: kafka-consumer
+  #   container_name: kafka-consumer
+  #   environment:
+  #     OTEL_RESOURCE_ATTRIBUTES: 'service.name=kafka-consumer'
+  #     OTEL_EXPORTER_OTLP_ENDPOINT: 'http://splunk-otel-collector:4317'
+  #     SPLUNK_METRICS_ENDPOINT: 'http://splunk-otel-collector:9943'
+  #     SPLUNK_METRICS_ENABLED: 'true'
+
+  # producer:
+  #   depends_on:
+  #     - kafka
+  #   build: producer
+  #   image: kafka-producer
+  #   container_name: kafka-producer
+  #   ports:
+  #     - '8080:8080'
+  #   environment:
+  #     OTEL_RESOURCE_ATTRIBUTES: 'service.name=kafka-producer'
+  #     OTEL_EXPORTER_OTLP_ENDPOINT: 'http://splunk-otel-collector:4317'
+  #     SPLUNK_METRICS_ENDPOINT: 'http://splunk-otel-collector:9943'
+  #     SPLUNK_METRICS_ENABLED: 'true'
+
+  # application:
+  #   depends_on:
+  #     - producer
+  #     - kafka
+  #     - consumer
+  #   build: python-api
+  #   image: kafka-python-api
+  #   container_name: application
+  #   ports:
+  #     - '5000:5000'
+  #   environment:
+  #     OTEL_EXPORTER_OTLP_ENDPOINT: 'http://splunk-otel-collector:4317'
+  #     OTEL_SERVICE_NAME: 'application'
+
+  # sfx-smart-agent:
+  #   image: quay.io/signalfx/signalfx-agent:5
+  #   container_name: signalfx-agent
+  #   pid: host
+  #   ports:
+  #   - 9080:9080
+  #   environment:
+  #     SFX_ACCESS_TOKEN: "${SPLUNK_ACCESS_TOKEN}"
+  #     SFX_INGEST_URL: "https://ingest.${SPLUNK_REALM}.signalfx.com"
+  #     SFX_API_URL: "https://api.${SPLUNK_REALM}.signalfx.com"
+  #     SFX_TRACE_ENDPOINT_URL: "https://ingest.${SPLUNK_REALM}.signalfx.com/v2/trace"
+  #     SFX_ENVIRONMENT: wvalerio-kafka
+  #     SPLUNK_REALM: ${SPLUNK_REALM}
+  #     HOSTNAME: wvalerio-kafka
+  #   volumes:
+  #     - /etc/passwd:/etc/passwd:ro
+  #     - /:/hostfs:ro
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - ./agent.yaml:/etc/signalfx/agent.yaml
+
+  # curl:
+  #   image: curlimages/curl
+  #   container_name: curl
+  #   depends_on:
+  #     - kafka
+  #     - application
+  #     - zookeeper
+  #   command:
+  #     [
+  #       '/bin/sh',
+  #       '-c',
+  #       "sleep 20; while true; do curl -s http://application:5000 ; sleep 1 ; echo '' ; done",
+  #     ]
+
+  # splunk-otel-collector:
+  #   image: quay.io/signalfx/splunk-otel-collector:0.28.1
+  #   container_name: splunk-otel-collector
+  #   command: ['--config=/etc/otel-collector-config.yaml']
+  #   pid: host
+  #   volumes:
+  #     - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+  #     - /etc/passwd:/etc/passwd:ro
+  #     - /:/hostfs:ro
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   environment:
+  #     SPLUNK_ACCESS_TOKEN: '${SPLUNK_ACCESS_TOKEN}'
+  #     SPLUNK_REALM: '${SPLUNK_REALM}'
+  #     SPLUNK_ENVIRONMENT: wvalerio-kafka-otel
+  #     HOSTNAME: wvalerio-kafka
+  #   ports:
+  #     - '13133:13133'
+  #     - '14250:14250'
+  #     - '14268:14268'
+  #     - '4317:4317'
+  #     - '6060:6060'
+  #     - '7276:7276'
+  #     - '8888:8888'
+  #     - '9411:9411'
+  #     - '9943:9943'
+
+  # OpenTelemetry Collector
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.84.0
+    container_name: otel-col
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 125M
+    restart: unless-stopped
+    environment:
+      LS_ACCESS_TOKEN: ${LS_ACCESS_TOKEN}
+    command: ['--config=/etc/otelcol-config.yml']
+    # command: [ "--config=/etc/otelcol-config.yml", "--config=/etc/otelcol-observability.yml", "--config=/etc/otelcol-config-extras.yml" ]
+    volumes:
+      - ./otel-collector-config.yml:/etc/otelcol-config.yml
+    #   - ./src/otelcollector/otelcol-observability.yml:/etc/otelcol-observability.yml
+    #   - ./src/otelcollector/otelcol-config-extras.yml:/etc/otelcol-config-extras.yml
+    # ports:
+    #   - "4317"          # OTLP over gRPC receiver
+    #   - "4318:4318"     # OTLP over HTTP receiver
+    #   - "9464"          # Prometheus exporter
+    #   - "8888"          # metrics endpoint
+    depends_on:
+      - kafka
+    # logging: *logging
