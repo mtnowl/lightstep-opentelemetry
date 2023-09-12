@@ -14,11 +14,11 @@ services:
       - '9989'
     environment:
       KAFKA_ADVERTISED_HOST_NAME: kafka
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_PORT: 9092
-      JMX_PORT: 9989
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: 'otel:1:1'
+    depends_on:
+      - zookeeper
 
   otelcol:
     image: otel/opentelemetry-collector-contrib:0.84.0
